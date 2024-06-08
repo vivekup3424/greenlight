@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"vivekup3424/greenlight/internal/data"
@@ -24,7 +23,7 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 		Genres:  []string{"drama", "more drama", "action"},
 		Version: 1,
 	}
-	data, err := json.MarshalIndent(movie, "", "\t")
+	data, err := json.Marshal(movie)
 	if err != nil {
 		app.errorLogger.Println("movie data marshalling:", err)
 		http.Error(w, "Internal Server Error when getting the movie data", http.StatusInternalServerError)
@@ -50,9 +49,25 @@ func (app *application) createMoviesHandler(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
+	//feeding the data on the database
+	newMovie := data.Movie{
+		Title:   input.Title,
+		Year:    input.Year,
+		Runtime: input.Runtime,
+		Genres:  input.Genres,
+	}
+	if err := app.models.Movies.Insert(&newMovie); err != nil {
+		app.errorLogger.Println("Inserting movie into database", err)
+		http.Error(w, "Database Insertion Errror", http.StatusInternalServerError)
+		return
+	}
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
-	fmt.Fprintf(w, "%+v\n", input)
-
+	js, err := json.Marshal(newMovie)
+	if err != nil {
+		app.errorLogger.Println("Converting the movie struct to json", err)
+		w.Write([]byte(`"message":"movie marshalling to json failed`))
+	}
+	w.Write(js)
 	w.Write([]byte(`"message":"New movie created"`))
 }

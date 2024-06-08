@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"vivekup3424/greenlight/internal/data"
 
 	_ "github.com/lib/pq"
 )
@@ -35,6 +36,7 @@ type application struct {
 	config      config
 	errorLogger *log.Logger
 	infoLogger  *log.Logger
+	models      data.Models
 }
 
 func main() {
@@ -47,12 +49,12 @@ func main() {
 	flag.IntVar(&cfg.port, "port", 4000, "API Server Port")
 	flag.StringVar(&cfg.env, "env", "development",
 		"Environment (development|staging|production)")
-	flag.StringVar(&cfg.db.dsn, "db-dsn", "postgres://greenlight:pa55word@localhost/greenlight", "POSTGRESQL DSN")
+	flag.StringVar(&cfg.db.dsn, "db-dsn", os.Getenv("DB_DSN"), "POSTGRESQL DSN")
 	flag.Parse()
 
 	//logger to write message to stdout
-	infoLogger := log.New(os.Stdout, "INFO", log.Ldate|log.Ltime)
-	errorLogger := log.New(os.Stderr, "ERROR", log.Ldate|log.Ltime|log.Lshortfile)
+	infoLogger := log.New(os.Stdout, "INFO ", log.Ldate|log.Ltime)
+	errorLogger := log.New(os.Stderr, "ERROR ", log.Ldate|log.Ltime|log.Lshortfile)
 	//an instance of the application struct
 	app := application{
 		config:      cfg,
@@ -65,6 +67,7 @@ func main() {
 	if err != nil {
 		errorLogger.Fatal(err)
 	}
+	app.models = data.NewModels(db) //is it ok to have a circular dependency here
 	// Defer a call to db.Close() so that the connection pool is closed before the
 	// main() function exits.
 	defer db.Close()

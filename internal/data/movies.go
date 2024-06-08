@@ -2,7 +2,11 @@ package data
 
 import (
 	"database/sql"
+	"fmt"
+	"log"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 type Movie struct {
@@ -19,11 +23,44 @@ type MovieModel struct {
 }
 
 func (m MovieModel) Insert(movie *Movie) error {
-	return nil
+	query := `
+	INSERT INTO movies (title,year,runtime,genres)
+	VALUES ($1,$2,$3,$4)
+	RETURNING id,created_at,version
+	`
+	//data := []interface{}{movie.Title, movie.Year, movie.Runtime,
+	//pq.A}
+	err := m.DB.QueryRow(query, movie.Title, movie.Year, movie.Runtime,
+		pq.Array(movie.Genres)).Scan(&movie.ID, &movie.CreatedAt, &movie.Version)
+	if err != nil {
+		log.Println("creating movie inside greenlight database", err)
+	} else {
+		log.Printf("movie with id: %d created successfully inside greenlight database\n", movie.ID)
+	}
+	return err
 }
 
 func (m MovieModel) Get(id int64) (*Movie, error) {
-	return nil, nil
+	query := `
+	SELECT id, created_at, title, year, runtime, genres, version 
+	FROM movies
+	WHERE id = $1
+	`
+	var movie Movie
+	err := m.DB.QueryRow(query, id).Scan(
+		&movie.ID, &movie.CreatedAt, &movie.Title, &movie.Year,
+		&movie.Runtime, pq.Array(&movie.Genres), &movie.Version,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			fmt.Println("Data row not found in database", err)
+			return nil, ErrRecordNotFound
+		} else {
+			fmt.Println("Some unknown error occured", err)
+			return nil, err
+		}
+	}
+	return &movie, nil
 }
 
 func (m MovieModel) Update(movie *Movie) error {
