@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"vivekup3424/greenlight/internal/data"
@@ -15,14 +16,25 @@ func (app *application) showMovieHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "Cant get ID", http.StatusBadRequest)
 		return
 	}
-	movie := data.Movie{
-		ID:      int64(numID),
-		Title:   "Cocaina",
-		Year:    2024,
-		Runtime: 90,
-		Genres:  []string{"drama", "more drama", "action"},
-		Version: 1,
+	movie, err := app.models.Movies.Get(int64(numID))
+	if err != nil {
+		if err == data.ErrRecordNotFound {
+			app.errorLogger.Println("getting movie", err)
+			http.Error(w, "movie not found", http.StatusNotFound)
+		} else {
+			app.errorLogger.Println("unkown error getting movie", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+		return
 	}
+	//movie := data.Movie{
+	//	ID:      int64(numID),
+	//	Title:   "Cocaina",
+	//	Year:    2024,
+	//	Runtime: 90,
+	//	Genres:  []string{"drama", "more drama", "action"},
+	//	Version: 1,
+	//}
 	data, err := json.Marshal(movie)
 	if err != nil {
 		app.errorLogger.Println("movie data marshalling:", err)
@@ -70,4 +82,79 @@ func (app *application) createMoviesHandler(w http.ResponseWriter, r *http.Reque
 	}
 	w.Write(js)
 	w.Write([]byte(`"message":"New movie created"`))
+}
+
+func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	numID, err := strconv.Atoi(id)
+	if err != nil {
+		app.errorLogger.Println("Cant get ID(int)", err)
+		http.Error(w, "Cant get ID", http.StatusBadRequest)
+		return
+	}
+	movie, err := app.models.Movies.Get(int64(numID))
+	if err != nil {
+		if err == data.ErrRecordNotFound {
+			app.errorLogger.Println("getting movie", err)
+			http.Error(w, "movie not found", http.StatusNotFound)
+		} else {
+			app.errorLogger.Println("unkown error getting movie", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	//get the new value for movie update
+	var input struct {
+		Title   string   `json:"title"`
+		Year    int32    `json:"year"`
+		Runtime int32    `json:"runtime"`
+		Genres  []string `json:"genres"`
+	}
+	decoder := json.NewDecoder(r.Body)
+	err = decoder.Decode(&input) //some golang nuances
+	if err != nil {
+		app.errorLogger.Println("Decoding request body", err)
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	//copy the values from input to the movie pointer
+	movie.Title = input.Title
+	movie.Year = input.Year
+	movie.Runtime = input.Runtime
+	movie.Genres = input.Genres
+
+	err = app.models.Movies.Update(movie)
+	if err != nil {
+		app.errorLogger.Println("updating movie id=", movie.ID, err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte("movie updated successfully"))
+	fmt.Fprintf(w, "%+v", movie)
+}
+
+func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	numID, err := strconv.Atoi(id)
+	if err != nil {
+		app.errorLogger.Println("Cant get ID(int)", err)
+		http.Error(w, "Cant get ID", http.StatusBadRequest)
+		return
+	}
+	err = app.models.Movies.Delete(int64(numID))
+	if err == data.ErrRecordNotFound {
+		app.errorLogger.Println("movie id not found", err)
+		http.Error(w, "Data not found", http.StatusNotFound)
+		return
+	} else if err != nil {
+		app.errorLogger.Println("failed delete operation", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+	app.infoLogger.Printf("movie with id: %v deleted successfully from database\n", numID)
+	w.Write([]byte("movie deleted successfully"))
 }
