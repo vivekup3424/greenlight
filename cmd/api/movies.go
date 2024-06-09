@@ -106,9 +106,9 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 
 	//get the new value for movie update
 	var input struct {
-		Title   string   `json:"title"`
-		Year    int32    `json:"year"`
-		Runtime int32    `json:"runtime"`
+		Title   *string  `json:"title"`
+		Year    *int32   `json:"year"`
+		Runtime *int32   `json:"runtime"`
 		Genres  []string `json:"genres"`
 	}
 	decoder := json.NewDecoder(r.Body)
@@ -120,11 +120,18 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	//copy the values from input to the movie pointer
-	movie.Title = input.Title
-	movie.Year = input.Year
-	movie.Runtime = input.Runtime
-	movie.Genres = input.Genres
-
+	if input.Title != nil {
+		movie.Title = *input.Title
+	}
+	if input.Year != nil {
+		movie.Year = *input.Year
+	}
+	if input.Runtime != nil {
+		movie.Runtime = *input.Runtime
+	}
+	if input.Genres != nil {
+		movie.Genres = input.Genres
+	}
 	err = app.models.Movies.Update(movie)
 	if err != nil {
 		app.errorLogger.Println("updating movie id=", movie.ID, err)
@@ -132,7 +139,7 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte("movie updated successfully"))
+	w.Write([]byte("movie updated successfully")) //this also returns an errr, but I dont know what to do with that error
 	fmt.Fprintf(w, "%+v", movie)
 }
 
