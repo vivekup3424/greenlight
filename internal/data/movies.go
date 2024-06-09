@@ -66,11 +66,11 @@ func (m MovieModel) Get(id int64) (*Movie, error) {
 func (m MovieModel) Update(movie *Movie) error {
 	query := `
 	UPDATE movies
-	SET title = $1, year = $2, runtime = $3, genres = $4,version = version+1
+	SET title = $1, year = $2, runtime = $3, genres = $4,version=version+1
 	WHERE id = $5
-	RETURNING VERSION
+	RETURNING version
 	`
-	err := m.DB.QueryRow(query, movie.Title, movie.Year, movie.Runtime, pq.Array(movie.Genres), movie.ID).Scan(movie.Version)
+	err := m.DB.QueryRow(query, movie.Title, movie.Year, movie.Runtime, pq.Array(movie.Genres), movie.ID).Scan(&movie.Version)
 	if err != nil {
 		log.Println("Updating movie", err)
 	} else {
