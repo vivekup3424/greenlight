@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -134,9 +135,16 @@ func (app *application) updateMovieHandler(w http.ResponseWriter, r *http.Reques
 	}
 	err = app.models.Movies.Update(movie)
 	if err != nil {
-		app.errorLogger.Println("updating movie id=", movie.ID, err)
-		http.Error(w, "internal server error", http.StatusInternalServerError)
-		return
+		switch {
+		case errors.Is(err, data.ErrEditConflict):
+			app.errorLogger.Println("edit conflict", err)
+			http.Error(w, "unable to update the record due to edit conflict, please try again", http.StatusConflict)
+			return
+		default:
+			app.errorLogger.Println("updating movie id=", movie.ID, err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
 	}
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte("movie updated successfully")) //this also returns an errr, but I dont know what to do with that error
