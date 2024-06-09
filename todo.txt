@@ -1,0 +1,6 @@
+1. add support for partial update of movies 
+with the help of file 
+handler
+2. add "optimistic locking" in update
+handler so that movies database after
+one update remains consistent
