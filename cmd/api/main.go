@@ -77,6 +77,7 @@ func main() {
 	//declare a new router and a /v1/healthcheck route
 	router := http.NewServeMux()
 	router.HandleFunc("GET /v1/healthcheck", app.healthcheckHandler)
+	router.HandleFunc("GET /v1/movies", app.listMoviesHandler)
 	router.HandleFunc("POST /v1/movies", app.createMoviesHandler)
 	router.HandleFunc("GET /v1/movies/{id}", app.showMovieHandler)
 	router.HandleFunc("PATCH /v1/movies/{id}", app.updateMovieHandler)

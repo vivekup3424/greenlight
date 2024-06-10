@@ -24,6 +24,52 @@ type MovieModel struct {
 	DB *sql.DB
 }
 
+func (m MovieModel) GetALl() ([]*Movie, error) {
+	query := `
+	SELECT id, created_at,title,year,runtime,genres,version
+	FROM movies
+	ORDER BY id
+	`
+	//create an context
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	rows, err := m.DB.QueryContext(ctx, query)
+	if err != nil {
+		log.Println("Error getting movies", err)
+		return nil, err
+	}
+	// Importantly, defer a call to rows.Close() to ensure that the resultset is closed
+	// before GetAll() returns.
+	defer rows.Close()
+
+	movies := []*Movie{}
+
+	for rows.Next() {
+		var movie Movie
+
+		err = rows.Scan(
+			&movie.ID,
+			&movie.CreatedAt,
+			&movie.Title,
+			&movie.Year,
+			&movie.Runtime,
+			&movie.Genres,
+			&movie.Version,
+		)
+		if err != nil {
+			return nil, err
+		}
+		movies = append(movies, &movie)
+	}
+	// When the rows.Next() loop has finished, call rows.Err() to retrieve any error
+	// that was encountered during the iteration.
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	// If everything went OK, then return the slice of movies.
+	return movies, nil
+}
 func (m MovieModel) Insert(movie *Movie) error {
 	query := `
 	INSERT INTO movies (title,year,runtime,genres)
