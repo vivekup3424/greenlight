@@ -1,6 +1,7 @@
 package data
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -42,15 +43,27 @@ func (m MovieModel) Insert(movie *Movie) error {
 }
 
 func (m MovieModel) Get(id int64) (*Movie, error) {
+	// Use the context.WithTimeout() function to create a context.Context which carries a
+	// 1-second timeout deadline. Note that we're using the empty context.Background()
+	// as the 'parent' context.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	// Importantly, use defer to make sure that we cancel the context before the Get()
+	// method returns.
+	defer cancel()
 	query := `
 	SELECT id, created_at, title, year, runtime, genres, version 
 	FROM movies
 	WHERE id = $1
 	`
 	var movie Movie
-	err := m.DB.QueryRow(query, id).Scan(
-		&movie.ID, &movie.CreatedAt, &movie.Title, &movie.Year,
-		&movie.Runtime, pq.Array(&movie.Genres), &movie.Version,
+	err := m.DB.QueryRowContext(ctx, query, id).Scan(
+		&movie.ID,
+		&movie.CreatedAt,
+		&movie.Title,
+		&movie.Year,
+		&movie.Runtime,
+		pq.Array(&movie.Genres),
+		&movie.Version,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -76,7 +89,7 @@ func (m MovieModel) Update(movie *Movie) error {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
 			log.Println("Edit Conflict(version)", err)
-			return err
+			return ErrEditConflict
 		default:
 			log.Println("Updating movie", err)
 			return err
