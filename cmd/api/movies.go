@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"vivekup3424/greenlight/internal/data"
 )
 
@@ -172,4 +173,49 @@ func (app *application) deleteMovieHandler(w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(http.StatusOK)
 	app.infoLogger.Printf("movie with id: %v deleted successfully from database\n", numID)
 	w.Write([]byte("movie deleted successfully"))
+}
+
+func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Title    string
+		Genres   []string
+		Page     int
+		Pagesize int
+		Sort     string
+	}
+	//parse and get the params from the query string
+	queryString := r.URL.Query()
+
+	var title string
+	defaultTitle := ""
+	//get the title from querystring
+	titleFromQuery := queryString.Get("title")
+	if titleFromQuery == "" {
+		title = defaultTitle
+	} else {
+		title = titleFromQuery
+	}
+	input.Title = title
+
+	//get the genres from the querystring
+	var genres []string
+	defaultGenres := []string{}
+	genresFromQuery := queryString.Get("genres")
+	if genresFromQuery == "" {
+		genres = defaultGenres
+	} else {
+		genres = strings.Split(genresFromQuery, ",")
+	}
+	input.Genres = genres
+
+	//get the page number
+	input.Page = app.readInt(queryString, "page", 1)
+	input.Pagesize = app.readInt(queryString, "page_size", 20)
+
+	// Extract the sort query string value, falling back to "id" if it is not provided
+	// by the client (which will imply a ascending sort on movie ID).
+	input.Sort = app.readString(queryString, "sort", "id")
+
+	//dump on the content on the response writer
+	fmt.Fprintf(w, "%+v\n", input)
 }
