@@ -54,7 +54,7 @@ func (m MovieModel) GetALl() ([]*Movie, error) {
 			&movie.Title,
 			&movie.Year,
 			&movie.Runtime,
-			&movie.Genres,
+			pq.Array(&movie.Genres),
 			&movie.Version,
 		)
 		if err != nil {

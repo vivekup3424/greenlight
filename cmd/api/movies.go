@@ -220,14 +220,13 @@ func (app *application) listMoviesHandler(w http.ResponseWriter, r *http.Request
 		http.Error(w, "error when getting movies", http.StatusInternalServerError)
 		return
 	}
-	js, err := json.Marshal(movies)
+	js, err := json.MarshalIndent(movies, "", "\t")
 	if err != nil {
 		app.errorLogger.Println("marshalln=ing movie, converting to json", err)
 		http.Error(w, "error when getting movies", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application-json")
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Write(js)
 	//dump on the content on the response writer
-	fmt.Fprintf(w, "%+v\n", input)
 }
